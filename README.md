@@ -1,4 +1,2 @@
-tammy-gspread
+tammy_gspread
 =============
-
-tammy-gspread
