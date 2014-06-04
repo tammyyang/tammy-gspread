@@ -7,22 +7,22 @@ test = Flask(__name__)
 
 tasks = [
     {
-        'timestamp': datetime.datetime(2014, 5, 4, 17, 56, 49, 11111),
+        'timestamp': datetime.datetime(2014, 6, 4, 18, 34, 49, 11111),
         'value': 1,
         'id': 1
     },
     {
-        'timestamp': datetime.datetime(2014, 5, 20, 17, 56, 49, 11111),
+        'timestamp': datetime.datetime(2014, 6, 4, 18, 35, 49, 11111),
         'value': 7,
         'id': 2
     },
     {
-        'timestamp': datetime.datetime(2014, 5, 25, 17, 56, 49, 11111),
+        'timestamp': datetime.datetime(2014, 6, 4, 18, 34, 48, 11111),
         'value': 2,
         'id': 3
     },
     {
-        'timestamp': datetime.datetime(2014, 4, 8, 17, 56, 49, 11111),
+        'timestamp': datetime.datetime(2014, 6, 4, 18, 35, 47, 11111),
         'value': -2,
         'id': 4
     },
@@ -36,7 +36,7 @@ def get_tasks():
 #curl -i http://localhost:5000/todo/api/v1.0/tasks/latest
 @test.route('/todo/api/v1.0/tasks/<latest>', methods = ['GET'])
 def get_task(latest):
-    filtered_data = [data for data in tasks if (datetime.datetime.now() - data['timestamp']).days < 30]
+    filtered_data = [data for data in tasks if (datetime.datetime.now() - data['timestamp']).seconds < 120]
     return jsonify( { 'task': filtered_data } )
 
 #curl -i http://localhost:5000/todo/api/v1.0/tasks/30
