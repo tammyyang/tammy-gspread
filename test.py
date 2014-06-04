@@ -22,3 +22,7 @@ def get_product(num_matrix, dimension):
 num_matrix = create_matrix(0, 5)
 final_result = get_product(num_matrix, 3)
 print final_result
+#OR the following method
+a = [0, 1, 2, 3, 4, 5]
+final_result = [ a*b*c for a,b,c in zip(a,a,a)]
+print final_result
