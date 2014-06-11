@@ -15,9 +15,11 @@ class STELLA_GSHEET:
         _wks = self.wks if _wks == None else _wks
         return _wks.col_values(col_index)
 
-    def row_values(self, row_index=0, _wks=None):
+    def row_values(self, row_index=-1, keyword='', _wks=None):
         _wks = self.wks if _wks == None else _wks
-        return _wks.row_values(row_index)
+        if row_index > 0:
+            return _wks.row_values(row_index)
+        return _wks.row_values(self.find_row_index(keyword, _wks))
 
     def set_selfws_by_title(self, title, _sheet=None):
         _sheet = self.sheet if _sheet == None else _sheet
@@ -59,6 +61,10 @@ class STELLA_GSHEET:
     def get_cell_index(self, row_idx, col_idx):
         return ''.join([chr(col_idx+64), str(row_idx)])
 
+    def get_cell(self, row_idx, col_idx, _wks=None):
+        _wks = self.wks if _wks == None else _wks
+        return _wks.cell(row_idx, col_idx).value
+
     def add_row(self, row, _wks=None):
         _wks = self.wks if _wks == None else _wks
         _wks.append_row(row)
@@ -68,20 +74,35 @@ class STELLA_GSHEET:
         for row in row_list:
             self.add_row(row, _wks=_wks)
 
-    def find_col_index(self, keyword="", _wks=None):
+    def find_cols_index(self, keyword="", _wks=None):
         _wks = self.wks if _wks == None else _wks
         first_row = self.row_values(row_index=1, _wks=_wks)
+        col_index_list = []
         for i in range(len(first_row)):
             if first_row[i] == keyword:
-                return i+1
+                col_index_list.append(i+1)
+        return col_index_list
+
+    def find_rows_index(self, keyword="", _wks=None):
+        _wks = self.wks if _wks == None else _wks
+        first_col = self.col_values(col_index=1, _wks=_wks)
+        row_index_list = []
+        for i in range(len(first_col)):
+            if first_col[i] == keyword:
+                row_index_list.append(i+1)
+        return row_index_list
+
+    def find_col_index(self, keyword="", _wks=None):
+        _wks = self.wks if _wks == None else _wks
+        return int(_wks.find(keyword).col)
 
     def find_row_index(self, keyword="", _wks=None):
         _wks = self.wks if _wks == None else _wks
-        first_col = self.col_values(col_index=1, _wks=_wks)
-        print first_col
-        for i in range(len(first_col)):
-            if first_col[i] == keyword:
-                return i+1
+        return int(_wks.find(keyword).row)
+
+    def get_all(self, _wks=None):
+        _wks = self.wks if _wks == None else _wks
+        return _wks.get_all_values()
 
     def copy_sheet(self, new_wks_name, orig_wks_name=None, sheet_key=None):
         sheet_to_copy = self.sheet if sheet_key == None else self.gc.open_by_key(sheet_key)

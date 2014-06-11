@@ -11,20 +11,21 @@ from launchpadlib.launchpad import Launchpad
 from launchpadlib.launchpad import Credentials
 from launchpadlib.launchpad import AccessToken
 
-LP_VALIDATE_BUGTASK_FIXSTATUS=("Fix Committed",
-                    "Fix Released" )
-LP_VALIDATE_BUGTASK_CLOSEDSTATUS=("Fix Committed",
+LP_VALIDATE_BUGTASK_STATUS = {
+    'FIXED' : ("Fix Committed",
+                    "Fix Released" ),
+    'CLOSED': ("Fix Committed",
                     "Fix Released",
                     "Invalid",
-                    "Won't Fix")
-LP_VALIDATE_BUGTASK_OPENSTATUS=("New",
+                    "Won't Fix"),
+    'OPEN': ("New",
                     "Incomplete (with response)",
                     "Incomplete (without response)",
                     "Incomplete",
                     "Confirmed",
                     "Triaged",
-                    "In Progress" )
-LP_VALIDATE_BUGTASK_STATUS=("New",
+                    "In Progress" ),
+    'ALL': ("New",
                     "Incomplete (with response)",
                     "Incomplete (without response)",
                     "Incomplete",
@@ -34,7 +35,9 @@ LP_VALIDATE_BUGTASK_STATUS=("New",
                     "Triaged",
                     "In Progress",
                     "Fix Committed",
-                    "Fix Released" )
+                    "Fix Released" ),
+}
+
 LP_VALIDATE_BUGTASK_IMPORTANCE=("Critical",
                     "High",
                     "Medium",
@@ -118,9 +121,16 @@ class GetLaunchpadObject:
         logging.debug("SetBug: {0} processed.".format(bug.web_link))
         bug.lp_save()
 
-    def SetBugTasks(self, **kwargs):
-        check_empty(target_task_list=self.target_tasks)
-        for bugtask in self.target_tasks:
+    def check_empty(self, **kwargs):
+        for key, value in kwargs.iteritems():
+            if value == None or len(value) == 0:
+                logging.error("%s is empty, please check." %key)
+                raise KeyError
+
+    def SetBugTasks(self, _tasks=None, **kwargs):
+        target_tasks = self.target_tasks if _tasks == None else _tasks
+        self.check_empty(target_task_list=target_tasks)
+        for bugtask in target_tasks:
             trunk_task_list = [b for b in bugtask.bug.bug_tasks if b.bug_target_name == self.project_name]
             trunk_task = trunk_task_list[0] if len(trunk_task_list) >0 else None
             for key in [key for key in kwargs.keys() if kwargs[key] != None]:
@@ -158,10 +168,12 @@ class GetLaunchpadObject:
     def DefineBugTasks(self, **kwargs):
         ''' tags: search for tasks which contain the tags defined
             keytag: search for tasks ONLY contain the tags which match this keyword'''
-        filter_dic = {'milestone': None, 'status': LP_VALIDATE_BUGTASK_STATUS, 'bug': None, 'keytag': None,
+        filter_dic = {'milestone': None, 'status': LP_VALIDATE_BUGTASK_STATUS['ALL'], 'bug': None, 'keytag': None,
                       'verified': None, 'tags': None, 'series': None, 'bu': None, 'filtertrunk': True}
         for key, value in kwargs.iteritems():
-            if key in filter_dic.keys():
+            if key == 'status' and value in LP_VALIDATE_BUGTASK_STATUS.keys():
+                filter_dic[key] = LP_VALIDATE_BUGTASK_STATUS[value]
+            elif key in filter_dic.keys():
                 filter_dic[key] = value
         target = self.project
 
