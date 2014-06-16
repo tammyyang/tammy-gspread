@@ -262,6 +262,18 @@ class GetLaunchpadObject:
     def GetProject(self):
         return self.project
 
+    def GetLastCommentOrLink(self, bug):
+        message_index = bug.message_count-1
+        last_comment = self.GetComment(bug, message_index=message_index)
+        if len(last_comment) >= 200:
+            return ''.join('http://launchpad.net/bugs/',str(bug.id),'/comments/', str(message_index))
+        return last_comment
+
+    def GetComment(self, bug, message_index=-1):
+        if message_index < 0:
+            message_index = bug.message_count-1
+        return bug.messages[message_index].content
+
     def FindSeriesNameFromMilestone(self, input_milestone=None):
         try:
             return input_milestone.series_target_link.split("/")[-1]
