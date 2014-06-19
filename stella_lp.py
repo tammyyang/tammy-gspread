@@ -171,41 +171,36 @@ class GetLaunchpadObject:
     def DefineBugTasks(self, **kwargs):
         ''' tags: search for tasks which contain the tags defined
             keytag: search for tasks ONLY contain the tags which match this keyword'''
-        filter_dic = {'milestone': None, 'status': LP_VALIDATE_BUGTASK_STATUS['ALL'], 'bug': None, 'keytag': None,
-                      'verified': None, 'tags': None, 'series': None, 'bu': None, 'filtertrunk': True, 'assignee': None}
+        bt_args = {'status': LP_VALIDATE_BUGTASK_STATUS['OPEN']}
+        filter_dic = {'bug': None, 'keytag': None, 'verified': None, 'tags': None, 'series': None, 'bu': None, 'filtertrunk': True}
+        target = self.project
         for key, value in kwargs.iteritems():
-            if key == 'status' and value in LP_VALIDATE_BUGTASK_STATUS.keys():
-                filter_dic[key] = LP_VALIDATE_BUGTASK_STATUS[value]
+            if key == 'milestone':
+                bt_args[key] = self.GetMilestone(value) 
+            elif key == 'assignee':
+                target = self.lp.people[value]
+                bt_args['assignee'] = self.GetAssigneeLink(value)
+            elif key == 'status':
+                if value in LP_VALIDATE_BUGTASK_STATUS.keys():
+                    bt_args[key] = LP_VALIDATE_BUGTASK_STATUS[value]
+                else:
+                    bt_args[key] = [value]
+            elif key == 'series':
+                target = self.GetSeries(value)
             elif key in filter_dic.keys():
                 filter_dic[key] = value
-        target = self.project
 
-        args = {'assignee': self.GetAssigneeLink('wanchingy'), 'status': ['Confirmed']}
-        #Get bugtasks
-        target = self.GetSeries('cnb-osp2-3c14')
-        self.target_tasks = [b for b in target.searchTasks(**args)]
-        '''
-        self.target_tasks = []
-        if filter_dic['series'] != None:
-            target = self.GetSeries(filter_dic['series'])
         if filter_dic['bug'] != None:
             self.target_tasks = [b for b in filter_dic['bug'].bug_tasks]
             logging.debug("Searching bugtasks by bug %s" %filter_dic['bug'].id)
-        elif filter_dic['assignee'] != None:
-            self.target_tasks = self.target_tasks + [b for b in target.searchTasks(assignee=self.GetAssigneeLink(filter_dic['assignee']))]
-        elif filter_dic['milestone'] != None:
-            milestone=self.GetMilestone(filter_dic['milestone'])
-            self.target_tasks = self.target_tasks + [b for b in target.searchTasks(milestone=milestone, status=filter_dic['status'])]
-            logging.debug("Searching bugtasks by milestone %s" %filter_dic['milestone'])
+
         else:
-            self.target_tasks = self.target_tasks + [b for b in target.searchTasks(status=filter_dic['status'])]
-        '''
+            self.target_tasks = [b for b in target.searchTasks(**bt_args)]
+
         #Filter bugtasks
         self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name").find('hwe') == -1, self.target_tasks)
         if filter_dic['filtertrunk']:
             self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name") != self.project_name, self.target_tasks)
-        if filter_dic['status'] != None:
-            self.target_tasks = filter(lambda bt: getattr(bt, "status") in filter_dic['status'], self.target_tasks)
         if filter_dic['bu'] != None:
             self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name").find(filter_dic['bu']) != -1, self.target_tasks)
         _removed_tasks = []

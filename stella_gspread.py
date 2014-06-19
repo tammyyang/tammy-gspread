@@ -11,15 +11,15 @@ class STELLA_GSHEET:
         else:
             self.wks = None
 
-    def col_values(self, col_index=0, _wks=None):
+    def col_values(self, col_index=0, keyword=None, _wks=None):
         _wks = self.wks if _wks == None else _wks
+        col_index = self.find_col_index(keyword=keyword) if keyword != None else col_index
         return _wks.col_values(col_index)
 
-    def row_values(self, row_index=-1, keyword='', _wks=None):
+    def row_values(self, row_index=0, keyword=None, _wks=None):
         _wks = self.wks if _wks == None else _wks
-        if row_index > 0:
-            return _wks.row_values(row_index)
-        return _wks.row_values(self.find_row_index(keyword, _wks))
+        row_index = self.find_row_index(keyword=keyword) if keyword != None else row_index
+        return _wks.row_values(row_index)
 
     def set_selfws_by_title(self, title, _sheet=None):
         _sheet = self.sheet if _sheet == None else _sheet
