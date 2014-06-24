@@ -13,12 +13,12 @@ class STELLA_GSHEET:
 
     def col_values(self, col_index=0, keyword=None, _wks=None):
         _wks = self.wks if _wks == None else _wks
-        col_index = self.find_col_index(keyword=keyword) if keyword != None else col_index
+        col_index = self.find_col_index(keyword=keyword, _wks=_wks) if keyword != None else col_index
         return _wks.col_values(col_index)
 
     def row_values(self, row_index=0, keyword=None, _wks=None):
         _wks = self.wks if _wks == None else _wks
-        row_index = self.find_row_index(keyword=keyword) if keyword != None else row_index
+        row_index = self.find_row_index(keyword=keyword, _wks=_wks) if keyword != None else row_index
         return _wks.row_values(row_index)
 
     def set_selfws_by_title(self, title, _sheet=None):
@@ -91,6 +91,10 @@ class STELLA_GSHEET:
             if first_col[i] == keyword:
                 row_index_list.append(i+1)
         return row_index_list
+
+    def find_cell_index(self, keyword="", _wks=None):
+        _wks = self.wks if _wks == None else _wks
+        return int(_wks.find(keyword).col), int(_wks.find(keyword).row)
 
     def find_col_index(self, keyword="", _wks=None):
         _wks = self.wks if _wks == None else _wks
