@@ -74,21 +74,29 @@ class STELLA_GSHEET:
         for row in row_list:
             self.add_row(row, _wks=_wks)
 
-    def find_cols_index(self, keyword="", _wks=None):
+    def find_cols_index(self, keyword="", _wks=None, match_exactly=False):
         _wks = self.wks if _wks == None else _wks
         first_row = self.row_values(row_index=1, _wks=_wks)
         col_index_list = []
         for i in range(len(first_row)):
-            if first_row[i] == keyword:
+            if first_row[i] is None:
+                continue
+            if not match_exactly and keyword in first_row[i]:
+                col_index_list.append(i+1)
+            elif match_exactly and first_row[i] == keyword:
                 col_index_list.append(i+1)
         return col_index_list
 
-    def find_rows_index(self, keyword="", _wks=None):
+    def find_rows_index(self, keyword="", _wks=None, match_exactly=False):
         _wks = self.wks if _wks == None else _wks
         first_col = self.col_values(col_index=1, _wks=_wks)
         row_index_list = []
         for i in range(len(first_col)):
-            if first_col[i] == keyword:
+            if first_col[i] is None:
+                continue
+            if not match_exactly and keyword in first_col[i]:
+                row_index_list.append(i+1)
+            elif match_exactly and first_col[i] == keyword:
                 row_index_list.append(i+1)
         return row_index_list
 

@@ -58,41 +58,32 @@ def calHPS(bug):
         hps_sub = tmp if tmp > hps_sub else hps_sub
     return hps_main + hps_sub
 
-def find_ppa(input_query=None):
-    series_list = sgd.col_values('LP Series')
-    if validate_lp_bug_num(input_query):
-        bug = slp.GetBugs(input_query)[0]
-        slp.DefineBugTasks(bug=bug)
-        tags = bug.tags
-        for bt in getlp.GetTasks():
-            if bt.status not in LP_VALIDATE_BUGTASK_STATUS['OPEN']:
-                continue
-            series =  getattr(bt, "bug_target_name").split("/")[-1]
-            if series not in series_list:
-                continue
-            milestone = getattr(bt, "milestone")
-            if milestone == None:
-                gdoc_index = sgd.find_row_index(series)
-            elif 'daan-140425-' in milestone:
-                gdoc_index = sgd.find_row_index('daan2')
-            else:
-                gdoc_index = sgd.find_row_index(milestone.name.split("-")[0])
+def find_monday():
+    from datetime import date, timedelta
+    today = date.today()
+    monday = today + timedelta(days=-today.weekday(), weeks=0)
+    return '-'.join([str(monday.year), str(monday.month), str(monday.day)])
 
-            bzr_src = source_list[gdoc_index]
-            if bzr_src not in ppa_source_map.keys():
-                ppa_source_map[bzr_src] = {'ppa':[],'ibs':[], 'base':''}
-            if "Active" in status_list[gdoc_index] and
-stella_ppa_list[gdoc_index] != 'N/A':
-                ppa_source_map[bzr_src]['ppa'].append(stella_ppa_list[gdoc_index])
-            elif project_ppa_list[gdoc_index] != 'N/A':
-                _project_ppa = project_ppa_list[gdoc_index].split("\n")
-                if 'stella-patch' in bug_tags :
-                    ppa_source_map[bzr_src]['ppa'].append(_project_ppa[-1])
-                else:
-                    ppa_source_map[bzr_src]['ppa'].append(_project_ppa[0])
-            ppa_source_map[bzr_src]['ibs'].append(ibs_list[gdoc_index])
+def deltaDate(d1, d2):
+    d1 = d1.replace(tzinfo=None)
+    d2 = d2.replace(tzinfo=None)
+    if d1 is None or d2 is None:
+        return np.nan
+    return (d2 - d1).days
 
+def find_release_today():
+    release_wks = sgd.get_sheet_by_title(find_monday())
+    col_index = sgd.find_col_index(keyword='LP Milestone', _wks=release_wks)
+    release_time_list = sgd.col_values(keyword='Expect Time', _wks=release_wks)[1:]
+    for i in range(0, len(release_time_list)):
+        if release_time_list[i] is None:
+            break
+        release_date = datetime.strptime(release_time_list[i].split(' ')[0], '%Y/%m/%d')
+        detla_days = deltaDate(datetime.now(), release_date)
+        if deltaDate(datetime.now(), release_date) > 0 :
+            print 'In %i days, %s' %(detla_days, sgd.get_cell(i+2, col_index, _wks=release_wks))
 try:
-    find_ppa('1329284')
+    find_release_today()
+
 except:
     raise 
