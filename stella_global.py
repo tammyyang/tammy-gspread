@@ -9,4 +9,6 @@ passfile = os.path.expanduser("~/.pes/ircbot/stellapass")
 stellapass = imp.load_source("stellapass",passfile)
 
 sgd = stella_gspread.STELLA_GSHEET(stellapass.SSO_ACCOUNT, stellapass.SSO_PASSWORD, '0ApMQND2fzJEVdDlYYVJBZjBKRkZVMmVzZlFncmVHcVE', wstitle='Project Overview')
+MAINSTREAM_ENG_LIST = sgd.col_values(keyword='Mainstream Engineer ID')[1:]
+ACTIVE_PROJECTS = ['stella'] + sgd.col_values(keyword='LP Series')[1:] + ['stella-base']
 slp = stella_lp.GetLaunchpadObject(saved_credential=True, project_name='stella')

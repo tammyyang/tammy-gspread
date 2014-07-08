@@ -52,9 +52,10 @@ class GetLaunchpadObject:
         self.input_parameters = {'staging': False,
                                  'project_name': None,
                                  'saved_credential': False}
-        for key in [key for key in kwargs.keys() if kwargs[key] != None]:
+        for key in [key for key in kwargs.keys() if kwargs[key] is not None]:
             self.input_parameters[key] = kwargs[key]
-        self.lp = self._login_lp(staging=self.input_parameters['staging'], saved_credential=self.input_parameters['saved_credential'])
+        self.lp = self._login_lp(staging=self.input_parameters['staging'],
+                                 saved_credential=self.input_parameters['saved_credential'])
         self.project_name = self.input_parameters['project_name'].lower()
         self.project = self.lp.projects[self.project_name]
         self.target_tasks = None
@@ -71,7 +72,9 @@ class GetLaunchpadObject:
                 parser = SafeConfigParser()
                 parser.read(CONFIG_PATH)
                 credentials = Credentials(parser.get('credential', 'consumer'))
-                content = ''.join(['oauth_token=', parser.get('credential', 'token'), '&oauth_token_secret=', parser.get('credential', 'secret'), '&lp.context=', parser.get('credential', 'context')])
+                content = ''.join(['oauth_token=', parser.get('credential', 'token'), 
+                                   '&oauth_token_secret=', parser.get('credential', 'secret'), 
+                                   '&lp.context=', parser.get('credential', 'context')])
                 credentials.access_token = AccessToken.from_string(content)
                 lp = Launchpad(credentials, None, None, service_root="production")
         else:
@@ -103,10 +106,11 @@ class GetLaunchpadObject:
             target = self.project)
 
     def SetBug(self, bug, **kwargs):
-        for key in [key for key in kwargs.keys() if kwargs[key] != None]:
+        for key in [key for key in kwargs.keys() if kwargs[key] is not None]:
             value = kwargs[key]
             if key == "tags":
                 oldtags = bug.tags
+                #bug.tags = ''.join(oldtags + value)
                 bug.tags = oldtags + value
             elif key == "title":
                 bug.title = value
@@ -116,24 +120,25 @@ class GetLaunchpadObject:
                 bug.description = value
             elif key == "series":
                 bug_targets = [getattr(bt, "bug_target_name").split("/")[-1] for bt in bug.bug_tasks]
-                for series in [series for series in value if (series != None and series.name not in bug_targets)]:
+                for series in [series for series in value \
+                               if (series is not None and series.name not in bug_targets)]:
                     bug.addTask(target=series)
         logging.debug("SetBug: {0} processed.".format(bug.web_link))
         bug.lp_save()
 
     def check_empty(self, **kwargs):
         for key, value in kwargs.iteritems():
-            if value == None or len(value) == 0:
+            if value is None or len(value) == 0:
                 logging.error("%s is empty, please check." %key)
                 raise KeyError
 
     def SetBugTasks(self, _tasks=None, **kwargs):
-        target_tasks = self.target_tasks if _tasks == None else _tasks
+        target_tasks = self.target_tasks if _tasks is None else _tasks
         self.check_empty(target_task_list=target_tasks)
         for bugtask in target_tasks:
             trunk_task_list = [b for b in bugtask.bug.bug_tasks if b.bug_target_name == self.project_name]
             trunk_task = trunk_task_list[0] if len(trunk_task_list) >0 else None
-            for key in [key for key in kwargs.keys() if kwargs[key] != None]:
+            for key in [key for key in kwargs.keys() if kwargs[key] is not None]:
                 value = kwargs[key]
                 if key == "status":
                     bugtask.status = value
@@ -146,22 +151,22 @@ class GetLaunchpadObject:
                                             and othertask.status in LP_VALIDATE_BUGTASK_OPENSTATUS]
                         if len(other_open_tasks) > 0 or 'stella-workaround' in bugtask.bug.tags:
                             bchange_trunk = False
-                    if bchange_trunk and trunk_task != None:
+                    if bchange_trunk and trunk_task is not None:
                         trunk_task.status = value
                 elif key == "importance":
                     bugtask.importance = value
-                    if trunk_task != None:
+                    if trunk_task is not None:
                         trunk_task.importance = value
                 elif key == "assignee":
                     assignee = self.GetAssigneeLink(value)
                     bugtask.assignee = assignee
-                    if trunk_task != None:
+                    if trunk_task is not None:
                         trunk_task.assignee = assignee
                 elif key == "milestone" and bugtask.bug_target_name != self.project_name:
                     bugtask.milestone_link = value
             logging.debug("SetBugTask: {0} processed.".format(bugtask.web_link))
             bugtask.lp_save()
-            if trunk_task != None:
+            if trunk_task is not None:
                 logging.debug("SetBugTask: {0} processed.".format(trunk_task.web_link))
                 trunk_task.lp_save()
 
@@ -172,7 +177,8 @@ class GetLaunchpadObject:
         ''' tags: search for tasks which contain the tags defined
             keytag: search for tasks ONLY contain the tags which match this keyword'''
         bt_args = {'status': LP_VALIDATE_BUGTASK_STATUS['OPEN']}
-        filter_dic = {'bug': None, 'keytag': None, 'verified': None, 'tags': None, 'series': None, 'bu': None, 'filtertrunk': True}
+        filter_dic = {'bug': None, 'keytag': None, 'verified': None, 
+                      'tags': None, 'series': None, 'bu': None, 'filtertrunk': True}
         target = self.project
         for key, value in kwargs.iteritems():
             if key == 'milestone':
@@ -190,7 +196,7 @@ class GetLaunchpadObject:
             elif key in filter_dic.keys():
                 filter_dic[key] = value
 
-        if filter_dic['bug'] != None:
+        if filter_dic['bug'] is not None:
             self.target_tasks = [b for b in filter_dic['bug'].bug_tasks]
             logging.debug("Searching bugtasks by bug %s" %filter_dic['bug'].id)
 
@@ -201,18 +207,18 @@ class GetLaunchpadObject:
         self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name").find('hwe') == -1, self.target_tasks)
         if filter_dic['filtertrunk']:
             self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name") != self.project_name, self.target_tasks)
-        if filter_dic['bu'] != None:
+        if filter_dic['bu'] is not None:
             self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name").find(filter_dic['bu']) != -1, self.target_tasks)
         _removed_tasks = []
-        if filter_dic['series'] != None:
+        if filter_dic['series'] is not None:
             filter_target_names = [getattr(series, "name") for series in [target]]
             self.target_tasks = filter(lambda bt: getattr(bt, "bug_target_name").split("/")[-1] in filter_target_names, self.target_tasks)
         for b in self.target_tasks:
-            if filter_dic['tags'] != None and len([[bugtag for bugtag in b.bug.tags if bugtag.find(filtertag) != -1] for filtertag in filter_dic['tags']][0]) == 0:
+            if filter_dic['tags'] is not None and len([[bugtag for bugtag in b.bug.tags if bugtag.find(filtertag) != -1] for filtertag in filter_dic['tags']][0]) == 0:
                 _removed_tasks.append(b)
-            if filter_dic['verified'] != None and len([bugtag for bugtag in b.bug.tags if bugtag in filter_dic['verified']]) == 0:
+            if filter_dic['verified'] is not None and len([bugtag for bugtag in b.bug.tags if bugtag in filter_dic['verified']]) == 0:
                 _removed_tasks.append(b)
-            if filter_dic['keytag'] != None and len([bugtag for bugtag in b.bug.tags if bugtag.find(filter_dic['keytag']) == -1]) > 0:
+            if filter_dic['keytag'] is not None and len([bugtag for bugtag in b.bug.tags if bugtag.find(filter_dic['keytag']) == -1]) > 0:
                 _removed_tasks.append(b)
         self.target_tasks = filter(lambda bt: bt not in _removed_tasks, self.target_tasks)
 
@@ -222,7 +228,7 @@ class GetLaunchpadObject:
         return self.base_link
     def GetBugs(self, input_bugid_string):
         output_bug_list = []
-        if input_bugid_string == None:
+        if input_bugid_string is None:
             logging.error("Please specify a bug id.")
             raise KeyError
         bugids = input_bugid_string.strip().split(",")
@@ -248,9 +254,9 @@ class GetLaunchpadObject:
         return self.project.getSeries(name=series_name)
 
     def GetMultipleSeries(self, input_string=None, input_list=None):
-        if input_string != None:
+        if input_string is not None:
             series_name_list = convert_option_to_list(input_string)
-        elif input_list != None:
+        elif input_list is not None:
             series_name_list = input_list
         output_series_list = []
         for series_name in series_name_list:
@@ -270,18 +276,24 @@ class GetLaunchpadObject:
         message_index = bug.message_count-1
         last_comment = self.GetComment(bug, message_index=message_index)
         if len(last_comment) >= 200:
-            return ''.join('http://launchpad.net/bugs/',str(bug.id),'/comments/', str(message_index))
+            return ''.join(['http://launchpad.net/bugs/',str(bug.id),'/comments/', str(message_index)])
         return last_comment
+
+
+    def FindBUInfo(self, input_milestone=None):
+        series = self.FindSeriesNameFromMilestone(input_milestone)
+        if series == 'dt-osp2':
+            return 'bdt'
+        return series.split("-")[0]
+
+    def FindSeriesNameFromMilestone(self, input_milestone=None):
+        milestone = self.GetMilestone(input_milestone)
+        try:
+            return milestone.series_target_link.split("/")[-1]
+        except Exception,e:
+            logging.error("Cannot find the associated series of %s milestone" %input_milestone)
 
     def GetComment(self, bug, message_index=-1):
         if message_index < 0:
             message_index = bug.message_count-1
         return bug.messages[message_index].content
-
-    def FindSeriesNameFromMilestone(self, input_milestone=None):
-        try:
-            return input_milestone.series_target_link.split("/")[-1]
-        except Exception,e:
-            logging.error("Cannot find the associated series of %s milestone" %input_milestone.name)
-
-
