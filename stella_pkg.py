@@ -2,22 +2,19 @@ import argparse
 import os
 import sys
 import re
+import subprocess
 import ConfigParser
 import ucltip
 import debian.deb822
-
-#ucltip.regcmds('bzr')
-
-cfgfile = os.getenv('HOME') + '/.pes/stella-new-project.conf'
-
-config = ConfigParser.RawConfigParser()
+from gettext import gettext as _
 
 class StellaBzr:
-    def __init__(self, local_repo_name, remote_repo_name=None, series='trusty'):
+    def __init__(self, local_repo_name, remote_repo_name=None, series='trusty', ask=False):
         ucltip.regcmds('bzr')
         self.series = series
         self.local_repo = local_repo_name
         self.remote_repo = local_repo_name if remote_repo_name is None else remote_repo_name
+        self.ask = ask
 
     def set_remote_repo(self, repo):
         self.remote_repo = repo
@@ -28,13 +25,21 @@ class StellaBzr:
     def valid_storage(self, path):
         return os.path.isdir(path)
 
+    def valid_branch(self, remote_path):
+        cmd = "bzr info %s" %remote_path
+        sp = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = sp.communicate()
+        if 'bzr: ERROR: Not a branch' in err:
+            return False
+        return True
+
     def pull_repo(self):
         local = self.find_local()
-        remote = self.find_remote()
         if self.valid_storage(local):
             print "Updating repo for %s. " %local
             bzr.pull(cwd=local)
         else:
+            remote = self.find_remote()
             print "Grabing repo from %s to %s. " %(remote, local)
             bzr.branch(remote, local)
 
@@ -43,6 +48,8 @@ class StellaBzr:
         if not self.valid_storage(local):
             print 'Invalid local repository'
             raise
+        if self.ask and raw_input("Push local source %s to remote? [y/N]" %local) not in ['y', 'Y']:
+            return
         msg = "Update {0}.".format(msg)
         try:
             bzr.add(cwd=local)
@@ -62,19 +69,21 @@ class StellaBzr:
     def find_local(self):
         return os.path.join(os.getcwd(), self.local_repo)
 
-    def find_remote(self):
+    def find_remote(self, repo_name=None):
+        repo_name = self.remote_repo if repo_name is None else repo_name
         prefix = "lp:~oem-solutions-group"
         if self.series == 'precise':
             project = 'stella-base'
         elif self.series == 'trusty':
             project = 'stella-trusty'
-        return "{0}/{1}/{2}".format(prefix, project, self.remote_repo)
+        return "{0}/{1}/{2}".format(prefix, project, repo_name)
 
 class Stelladput:
-    def __init__(self, local_repo='', series='trusty'):
+    def __init__(self, local_repo='', series='trusty', ask=False):
         self.local_repo = local_repo
         self.series = series
         self.pwd = os.getcwd()
+        self.ask = ask
 
     def set_series(self, series):
         self.series = series
@@ -117,9 +126,10 @@ class Stelladput:
         os.chdir(self.pwd)
 
     def execute_cmd(self, cmd):
-        print cmd
+        if self.ask and raw_input("Execute %s? [y/N]" %cmd) not in ['y', 'Y']:
+            return
         try:
-            os.system(cmd)
+            subprocess.call(cmd, shell=True)
         except Exception as e:
             print e
             sys.exit()
@@ -127,7 +137,7 @@ class Stelladput:
     def dput(self, package, version, codename=""):
         PPA = "ppa:oem-archive/stella"
         if len(codename) > 0:
-            PPA = ''.join([PPA, "_", codename]) 
+            PPA = ''.join([PPA, "-", codename]) 
         cmd = "dput -f %s ../%s_%s_source.changes" %(PPA, package, version)
         self.execute_cmd(cmd)
 
@@ -152,29 +162,37 @@ class Stelladput:
         pattern = re.compile("[0-9]")
         return pattern.match(num)
 
-
 class PrepareNewPj:
     def __init__(self, pj_name, series='trusty', old_pj_name='daan'):
         self.pj_name = pj_name
         self.series = series
         self.old_pj_name = old_pj_name
-        self.bzr = StellaBzr('', series=series)
-        self.dput = Stelladput(series=series)
+        self.bzr = StellaBzr('', series=series, ask=True) #set ask=False after it is stable
+        self.dput = Stelladput(series=series, ask=True) #set ask=False after it is stable
         self.init_new_repos()
+
+    def define_bzr_repo(self, repo):
+        local_repo_name = repo.replace('CODENAME', self.pj_name)
+        self.bzr.set_local_repo(local_repo_name)
+        remote_branch = self.bzr.find_remote(repo_name=local_repo_name)
+        if self.bzr.valid_branch(remote_branch):
+            self.bzr.set_remote_repo(local_repo_name)
+        else:
+            self.bzr.set_remote_repo(repo.replace('CODENAME', self.old_pj_name))
 
     def init_new_repos(self):
         repos = ['volatile-task-CODENAME', 'stella-ug-CODENAME', 'stella-CODENAME-config']
         for repo in repos: 
-            #Prepare the source
-            self.bzr.set_local_repo(repo.replace('CODENAME', self.pj_name))
-            self.bzr.set_remote_repo(repo.replace('CODENAME', self.old_pj_name))
+            self.define_bzr_repo(repo)
             self.bzr.pull_repo()
             local = self.bzr.find_local()
             self.mass_file_replacement(local, self.old_pj_name, self.pj_name)
+
             self.dput.set_local_repo(local)
             msg = 'Initialization for %s project.' %self.pj_name
             version = self.dput.gen_new_version().replace(self.old_pj_name, self.pj_name)
             self.dput.do(codename=self.pj_name, fixed_bug="", msg=msg, version=version)
+
             self.bzr.push_repo(msg=msg)
 
     def mass_file_replacement(self, local, pat, s_after):
@@ -197,9 +215,20 @@ class PrepareNewPj:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project', help='project.')
-    opts = parser.parse_args()
-    newpj = PrepareNewPj('jian', series='precise', old_pj_name='pinglin')
+    parser.add_argument('-p','--project', default=None,
+                        help="Codename of the new project to create.")
+    parser.add_argument('-s','--series', default='precise',
+                        help="Ubuntu series (Default: precise)")
+    parser.add_argument('-old','--oldpj', default='pinglin',
+                        help="Codename of the old project to copy source from. (Default: pinglin)")
+    args = parser.parse_args()
+
+    if args.project is None:
+        project = raw_input("Input codename of the new project to create.")
+    else:
+        project = args.project
+
+    PrepareNewPj(project, series=args.series, old_pj_name=args.oldpj)
     
 if __name__ == '__main__':
     main()
