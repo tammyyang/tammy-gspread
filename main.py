@@ -8,6 +8,8 @@ from ConfigParser import SafeConfigParser
 import logging
 import subprocess
 import os
+import debian.deb822
+import bz2
 
 KEY = '0ApMQND2fzJEVdDlYYVJBZjBKRkZVMmVzZlFncmVHcVE'
 TABNAME = 'Project Overview'
@@ -15,6 +17,8 @@ TABNAME = 'Project Overview'
 passphrase_path = os.path.join(os.environ["HOME"], ".tammy")
 parser = SafeConfigParser()
 parser.read(passphrase_path)
+cesg_username = parser.get('main', 'cesg_username')
+cesg_password = parser.get('main', 'cesg_password')
 email = parser.get('main', 'email')
 password = parser.get('main', 'password')
 sgd = stella_gspread.STELLA_GSHEET(email,password, KEY, wstitle=TABNAME)
@@ -100,29 +104,39 @@ def validate_num(num):
     else:
         return False
 
+def fetch_cnb_platform_info(wks, platform):
+    ix = {'arc': sgd.find_col_index('Architecture', _wks=wks)-1,
+          'sid': sgd.find_col_index('System Board ID', _wks=wks)-1,
+          'gm': sgd.find_col_index('GM', _wks=wks)-1}
+    pinfo = sgd.row_values(keyword=platform, _wks=wks)
+    plist = []
+    if pinfo[ix['sid']] is None:
+        return []
+    for pid in pinfo[ix['sid']].split('\n'):
+        plist.append([pid, platform, pinfo[ix['gm']], pinfo[ix['arc']]])
+    return plist
+
+def create_cnb_platform_info_table(key='1GXTg4t7FYeHAArVMxU1AJV_9tbiKrldSfHYIlb1QMkc'):
+    id_sheet = sgd.gc.open_by_key(key)
+    id_wks = sgd.get_sheet_by_index(0, _sheet=id_sheet)
+    tags = sgd.col_values(keyword='Platform Tag', _wks=id_wks)
+    platform_list = []
+    for tag in tags:
+        if tag is not None:
+            platform_list += fetch_cnb_platform_info(id_wks, tag)
+    with open('/tmp/platform-compatibility-list', 'w') as f:
+        f.write('declare -A platformLookupTable=(\n')
+        for item in platform_list:
+            f.write('    ["%s"]="%s:%s" #%s\n' \
+                    %(item[0], item[1], item[2], item[3]))
+        f.write(')')
+    f.close()
+
+    
+
+
 try:
-    userid='gerald-yang-tw'
-    slp.DefineBugTasks(assignee=userid)
-    tasks = slp.GetTargetTasks()
-    printed_bug = {}
-    total_hps = 0
-    excluded_tag_preffix = ['stella-', 'hwe-', 'oem-', 'fae-']
-    pattern = re.compile("[0-9]")
-    for bt in tasks:
-        platform_tags = [tag for tag in bt.bug.tags if pattern.match(tag[-1])]
-        print platform_tags
-        bugid = bt.bug.id
-        if getattr(bt, "bug_target_name").split("/")[-1] not in ACTIVE_PROJECTS:
-            continue
-        if bugid in printed_bug.keys():
-            continue
-        print bugid, getattr(bt, "bug_target_name").split("/")[-1]
-        HPS = calHPS(bt.bug)
-        print HPS
-        total_hps += HPS
-        if HPS >= 1.0:
-            printed_bug[bugid] = [HPS, bt.bug.title]
-    print printed_bug
+    create_cnb_platform_info_table()
 
 except:
     raise 

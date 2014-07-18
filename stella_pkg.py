@@ -40,7 +40,7 @@ class StellaCommon:
         new_path = path.replace(pat, s_after)
         os.rename(path, new_path)
 
-    def check_number(self, num):
+    def valid_number(self, num):
         pattern = re.compile("[0-9]")
         return pattern.match(num)
 
@@ -145,7 +145,7 @@ class Stelladput:
     def gen_new_version(self):
         version = self.find_latest_version()
         last_num_ix = 1
-        while(self.common.check_number(version[-last_num_ix])):
+        while(self.common.valid_number(version[-last_num_ix])):
             last_num_ix += 1
         last_num_ix = last_num_ix - 1
         vnumber = int(version[-last_num_ix:]) + 1

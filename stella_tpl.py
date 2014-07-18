@@ -17,9 +17,9 @@ RELEASE_ISO_MD5="%s"'
 HELP_TPL = \
 ' == How to use stellabot ==\n\
 Speak to her: ex: hi how are u?\n\
-\n* [find-ppa] To find the right PPA, right volatile-task and the source * repository: \n\
-             /msg stellabot find-ppa 1316983 (oem-balabala-1316983)\n\
-             /msg stellabot find-ppa stella-pinglin (oem-balabala-1316983)\n\
+\n* [findppa] To find the right PPA, right volatile-task and the source * repository: \n\
+             /msg stellabot findppa 1316983 (oem-balabala-1316983)\n\
+             /msg stellabot findppa stella-pinglin (oem-balabala-1316983)\n\
 \n* [cesg] Find published package and versions:\n\
          /msg stellabot cesg PROJECT_NAME PACKAGE_NAME\n  cesg all PACKAGE_NAME\n\
 \n* [auth] Ger authorized:\n\
