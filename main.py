@@ -110,7 +110,7 @@ def fetch_cnb_platform_info(wks, platform):
           'gm': sgd.find_col_index('GM', _wks=wks)-1}
     pinfo = sgd.row_values(keyword=platform, _wks=wks)
     plist = []
-    if pinfo[ix['sid']] is None:
+    if pinfo[ix['sid']] is None or pinfo[ix['gm']] is None:
         return []
     for pid in pinfo[ix['sid']].split('\n'):
         plist.append([pid, platform, pinfo[ix['gm']], pinfo[ix['arc']]])
@@ -122,13 +122,15 @@ def create_cnb_platform_info_table(key='1GXTg4t7FYeHAArVMxU1AJV_9tbiKrldSfHYIlb1
     tags = sgd.col_values(keyword='Platform Tag', _wks=id_wks)
     platform_list = []
     for tag in tags:
-        if tag is not None:
-            platform_list += fetch_cnb_platform_info(id_wks, tag)
+        if tag == 'Platform Tag' or tag is None:
+            continue
+        platform_list += fetch_cnb_platform_info(id_wks, tag)
     with open('/tmp/platform-compatibility-list', 'w') as f:
         f.write('declare -A platformLookupTable=(\n')
         for item in platform_list:
-            f.write('    ["%s"]="%s:%s" #%s\n' \
-                    %(item[0], item[1], item[2], item[3]))
+            f.write(('    ["%s"]="%s:%s" #%s\n' \
+                      %(item[0].strip().replace('0x', '').lower(), \
+                        item[1], item[2].replace('/','-'), item[3])).encode('utf-8'))
         f.write(')')
     f.close()
 
